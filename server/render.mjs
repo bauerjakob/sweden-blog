@@ -40,6 +40,9 @@ function photoOgImage(entry, base) {
 
 function injectHead(html, meta) {
   let out = html
+    // Comments first: a literal <title>/<meta> inside one would otherwise anchor
+    // the strips below and eat the comment's own `-->`, commenting out the app.
+    .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<title>[\s\S]*?<\/title>/i, '')
     .replace(/<meta[^>]+name="description"[^>]*>/gi, '')
     .replace(/<meta[^>]+property="og:[^"]*"[^>]*>/gi, '')
