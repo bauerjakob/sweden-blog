@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { DIST_DIR } from './config.mjs'
-import { listEntries, getEntryBySlug } from './db.mjs'
+import { listEntries, getEntryBySlug, getAbout } from './db.mjs'
 import { toApiEntry } from './content.mjs'
 
 const SITE_NAME = 'Ett halvår i Sverige'
@@ -100,9 +100,13 @@ export function htmlForRequest(req) {
   }
 
   if (p === '/about') {
+    // The page is editable, so its link preview follows what it actually says
+    // now. The heading is stored with its line breaks; a preview wants one line.
+    const about = getAbout()
     return injectHead(tpl, {
-      title: `About — ${SITE_NAME}`,
+      title: `${about?.title?.replace(/\s*\n\s*/g, ' ') || 'About'} — ${SITE_NAME}`,
       description:
+        about?.excerpt ||
         'Who I am, where I am, and why this site exists: a photo journal from an exchange semester in Stockholm.',
       url: `${base}/about`,
       type: 'website',

@@ -61,7 +61,7 @@ Open <http://localhost:5173>. The first run seeds the example entries from
 `content/entries/` into the database.
 
 - Sign in at <http://localhost:5173/login>. Once in, you get **＋ New**,
-  **Edit**, and **Delete** controls.
+  **Edit**, and **Delete** controls on entries, and **Edit** on the About page.
 - The dev API listens on **:5178** and the Vite dev server proxies to it. To use
   a different API port: `PORT=4000 npm run dev:server` and
   `API_PROXY=http://localhost:4000 npm run dev`.
@@ -93,6 +93,24 @@ immediately.
   appear on the timeline, tags, or sitemap — handy for something just for family.
 - Permalinks (`/entry/<date>-<title>`) stay stable when you edit, so a link you
   shared keeps working.
+
+## Writing: the About page
+
+Sign in and open **About**, then click **Edit** (or go to `/about/edit`). You
+get the heading — each line you type is a line of the big display title — and
+the page body in Markdown. Saving re‑renders the page, and the link preview
+(title and description) follows what the page now says.
+
+One token is available in the body: `{{count}}` becomes the number of entries on
+the timeline, so the copy can quote a number without going stale. Links that
+start with `/` stay inside the app instead of reloading it.
+
+Its starting text lives in `content/about.md` and is seeded into the database on
+first boot, exactly like the entries below — after that the database is the
+source of truth, so editing the file has no effect on a database that has
+already been seeded.
+
+---
 
 ### Seeding from Markdown files
 
@@ -182,6 +200,7 @@ and give `./data` durable storage.
 
 ```
 content/entries/        Markdown entries — imported into the DB on first boot
+content/about.md        The About page's starting text — likewise, then editable
 photos-src/             Originals for the example images (input to npm run photos)
 public/photos/          Generated example WebP (committed, served at /photos)
 server/                 Express API, SQLite, auth, photo upload, SSR Open Graph
@@ -189,15 +208,17 @@ server/                 Express API, SQLite, auth, photo upload, SSR Open Graph
   db.mjs                Schema, seeding, queries
   auth.mjs              bcrypt login, JWT cookie, CSRF guard
   entries.mjs           Entries CRUD (mutations require auth)
+  about.mjs             The single editable About page (edits require auth)
   photos.mjs            Upload + sharp resize
   render.mjs            Per-entry Open Graph + sitemap
 src/
   api/client.ts         Typed fetch wrapper (sends the CSRF header)
   content/store.ts      Reactive store; adapts API entries -> Daylight-aware Entry
   content/mutations.ts  create / update / delete + store refresh
+  content/about.ts      The About page: load + save, one document
   stores/auth.ts        Session state, login/logout
   lib/daylight.ts       Sunrise/sunset -> per-entry palette (the signature idea)
-  components/ pages/     Timeline, Entry, About, Tag, 404, Login, Editor
+  components/ pages/     Timeline, Entry, About, Tag, 404, Login, Editors
 data/                   SQLite DB + uploaded photos (gitignored; a volume in Docker)
 Dockerfile, docker-compose.yml, .env.example
 ```

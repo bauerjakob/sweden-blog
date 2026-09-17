@@ -112,6 +112,51 @@ export function normaliseEntryInput(input) {
   }
 }
 
+/**
+ * Normalise + validate the About page. Two fields only: a heading (plain text,
+ * where a line break is a line break) and a Markdown body.
+ */
+export function normaliseAboutInput(input) {
+  const title = String(input.title ?? '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n')
+  if (!title) {
+    const err = new Error('The About page needs a heading.')
+    err.status = 400
+    throw err
+  }
+
+  const bodyMd = typeof input.bodyMd === 'string' ? input.bodyMd : ''
+  const { html, isEmpty } = renderMarkdown(bodyMd)
+  if (isEmpty) {
+    const err = new Error('The About page needs some text.')
+    err.status = 400
+    throw err
+  }
+
+  return {
+    title,
+    bodyMd: bodyMd.trim(),
+    bodyHtml: html,
+    excerpt: excerptFromHtml(html),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+/** The public shape: rendered HTML, never the Markdown source. */
+export function toApiAbout(doc) {
+  if (!doc) return null
+  return {
+    title: doc.title,
+    bodyHtml: doc.bodyHtml,
+    excerpt: doc.excerpt,
+    updatedAt: doc.updatedAt,
+  }
+}
+
 /** The public JSON shape the frontend consumes. */
 export function toApiEntry(row) {
   return {

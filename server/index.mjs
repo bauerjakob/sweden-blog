@@ -12,6 +12,7 @@ import {
 import { authRouter } from './auth.mjs'
 import { entriesRouter } from './entries.mjs'
 import { photosRouter } from './photos.mjs'
+import { aboutRouter } from './about.mjs'
 import { htmlForRequest, sitemapXml, baseUrl } from './render.mjs'
 
 const app = express()
@@ -23,6 +24,7 @@ app.use(cookieParser())
 app.use('/api/auth', authRouter)
 app.use('/api/entries', entriesRouter)
 app.use('/api/photos', photosRouter)
+app.use('/api/about', aboutRouter)
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
 // ---- Media ----------------------------------------------------------------

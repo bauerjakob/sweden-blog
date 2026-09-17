@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { applyDocumentMeta } from '@/composables/useDocumentMeta'
 import { setSceneVars } from '@/composables/useAmbientDaylight'
 import { publicEntries } from '@/content/store'
+import { loadAbout, useAbout } from '@/content/about'
+import { isLoggedIn } from '@/stores/auth'
 
 // A fixed mood for the About page: the long blue dusk of a Swedish afternoon.
 const scene = {
@@ -11,65 +13,84 @@ const scene = {
   '--day-page-2': '#0b171e',
 }
 
-onMounted(() => {
+const router = useRouter()
+const { about, loading, error } = useAbout()
+
+const count = computed(() => publicEntries.value.length)
+
+// The heading is plain text the owner types; a line break there is a line break
+// here. Splitting keeps it out of v-html.
+const titleLines = computed(() => (about.value?.title ?? '').split('\n'))
+
+/*
+  One token, {{count}}, so the copy can say how many entries there are without
+  the owner having to come back and correct the number. Substituted after
+  Markdown rendering, in the HTML the server produced.
+*/
+const bodyHtml = computed(() =>
+  (about.value?.bodyHtml ?? '').replace(/\{\{\s*count\s*\}\}/g, String(count.value)),
+)
+
+onMounted(async () => {
   setSceneVars(scene)
+  await loadAbout()
   applyDocumentMeta({
-    title: 'About — Ett halvår i Sverige',
+    title: `${titleLines.value.join(' ') || 'About'} — Ett halvår i Sverige`,
     description:
+      about.value?.excerpt ||
       'Who I am, where I am, and why this site exists: a photo journal from an exchange semester in Stockholm.',
     type: 'website',
   })
 })
 
-const count = computed(() => publicEntries.value.length)
+/*
+  The body is authored Markdown, so a link to another page of this site arrives
+  as a plain <a> that would reload the whole app. Catch those and hand them to
+  the router instead, leaving modified clicks and external links alone.
+*/
+function onProseClick(e: MouseEvent) {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+  const link = (e.target as HTMLElement | null)?.closest('a')
+  if (!link || link.target === '_blank') return
+  const href = link.getAttribute('href')
+  if (!href || !href.startsWith('/')) return
+  e.preventDefault()
+  router.push(href)
+}
 </script>
 
 <template>
   <div class="about">
     <div class="about__inner">
-      <p class="about__eyebrow">About</p>
-      <h1 class="about__title font-display">Why this<br />exists</h1>
-
-      <div class="about__prose prose-journal">
-        <p>
-          Hej. I'm a 23-year-old spending an exchange semester in
-          <strong>Stockholm</strong>, winter semester 2026/27. This is where I
-          keep the semester — a photo and a couple of sentences at a time, in the
-          order it happened.
-        </p>
-        <p>
-          It's here for two reasons. The first is selfish: I want something I'll
-          still want to read in ten years, when the specific weight of a February
-          afternoon here has gone fuzzy. The second is for the people back home —
-          my parents, my grandmother, a handful of friends — who wanted to follow
-          along without an app, an account, or a social network asking them to
-          sign up for anything.
-        </p>
-
-        <h2>The daylight thing</h2>
-        <p>
-          If you scroll the timeline you'll notice the page gets darker and
-          lighter. That's not a mood board — it's real. Every entry is tinted by
-          how much daylight Stockholm actually had that day, from just over six
-          hours at the December solstice to over eighteen at midsummer. The
-          winter really is that dark, and the summer really doesn't end. Watching
-          the page change as you read it is the closest I could get to explaining
-          what the light does to a place.
-        </p>
-
-        <h2>What this isn't</h2>
-        <p>
-          There are no comments, no likes, no follower counts, no newsletter, no
-          analytics, and no cookie banner — because there are no cookies and
-          nothing is tracked. If you're reading this, someone sent you the link,
-          which is exactly how it's meant to travel.
-        </p>
-        <p>
-          There are {{ count }} entries so far. The best way in is simply to
-          <RouterLink to="/">start at the top of the timeline</RouterLink> and
-          scroll.
-        </p>
+      <div class="about__topline">
+        <p class="about__eyebrow">About</p>
+        <RouterLink v-if="isLoggedIn" to="/about/edit" class="about__edit">Edit</RouterLink>
       </div>
+
+      <p v-if="loading && !about" class="about__status" aria-live="polite">Loading…</p>
+      <p v-else-if="error && !about" class="about__status" role="alert">{{ error }}</p>
+
+      <template v-else-if="about">
+        <h1 class="about__title font-display">
+          <template v-for="(line, i) in titleLines" :key="i">
+            <br v-if="i > 0" />{{ line }}
+          </template>
+        </h1>
+
+        <!-- Markdown rendered on the server, where HTML in the source is off. -->
+        <div class="about__prose prose-journal" @click="onProseClick" v-html="bodyHtml"></div>
+      </template>
+
+      <template v-else>
+        <h1 class="about__title font-display">Nothing<br />here yet</h1>
+        <p class="about__status">
+          <template v-if="isLoggedIn">
+            This page has no text yet.
+            <RouterLink to="/about/edit">Write it</RouterLink>.
+          </template>
+          <template v-else>There's nothing on this page yet.</template>
+        </p>
+      </template>
 
       <RouterLink to="/" class="about__back">← To the timeline</RouterLink>
     </div>
@@ -86,12 +107,33 @@ const count = computed(() => publicEntries.value.length)
   margin: 0 auto;
   padding: clamp(2rem, 7vw, 4.5rem) clamp(1rem, 4vw, 2rem) 4rem;
 }
+.about__topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1rem;
+}
 .about__eyebrow {
   font-size: 0.78rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--day-ink-muted);
-  margin: 0 0 1rem;
+  margin: 0;
+}
+.about__edit {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1a1206;
+  background: var(--color-ochre);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.about__status {
+  color: var(--day-ink-muted);
 }
 .about__title {
   font-size: clamp(2.8rem, 11vw, 5.5rem);

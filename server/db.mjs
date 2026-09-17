@@ -8,6 +8,7 @@ import {
   UPLOADS_DIR,
   DB_PATH,
   ENTRIES_SEED_DIR,
+  ABOUT_SEED_PATH,
   MANIFEST_PATH,
 } from './config.mjs'
 import { renderMarkdown, makeSlug, excerptFromHtml } from './content.mjs'
@@ -160,6 +161,35 @@ function seedEntries() {
   console.log(`[db] seeded ${parsed.length} entries from Markdown`)
 }
 
+/**
+ * One-time seed of the About page from the committed Markdown file. Once it is
+ * in the database the site owns it: edits happen in the editor, and this file
+ * is never read again (which is why an edit here won't show up on a database
+ * that has already been seeded).
+ */
+function seedAbout() {
+  if (getAbout()) return
+  if (!existsSync(ABOUT_SEED_PATH)) {
+    console.warn('[db] no content/about.md to seed the About page from')
+    return
+  }
+  const raw = readFileSync(ABOUT_SEED_PATH, 'utf8')
+  const m = raw.match(FRONTMATTER_RE)
+  const fm = m ? (yaml.load(m[1]) ?? {}) : {}
+  const body = m ? m[2] : raw
+  const { html, isEmpty } = renderMarkdown(body)
+  if (isEmpty) return
+
+  setAbout({
+    title: String(fm.title || 'About').trim(),
+    bodyMd: body.trim(),
+    bodyHtml: html,
+    excerpt: excerptFromHtml(html),
+    updatedAt: new Date().toISOString(),
+  })
+  console.log('[db] seeded the About page from Markdown')
+}
+
 /** Seed an admin user from env on first boot, if none exists yet. */
 function seedAdmin() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n
@@ -178,6 +208,7 @@ function seedAdmin() {
 }
 
 seedEntries()
+seedAbout()
 seedAdmin()
 
 // ---- Query helpers -------------------------------------------------------
@@ -234,6 +265,28 @@ export function updateEntry(id, e) {
 
 export function deleteEntry(slug) {
   return db.prepare('DELETE FROM entries WHERE slug = ?').run(slug)
+}
+
+/**
+ * The About page, stored as one JSON document under a single `meta` key —
+ * there is only ever one of it, and a blob means no migration when it grows a
+ * field. Returns null before the first seed.
+ */
+export function getAbout() {
+  const row = db.prepare("SELECT value FROM meta WHERE key = 'about'").get()
+  if (!row?.value) return null
+  try {
+    return JSON.parse(row.value)
+  } catch {
+    return null
+  }
+}
+
+export function setAbout(doc) {
+  db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('about', ?)").run(
+    JSON.stringify(doc),
+  )
+  return getAbout()
 }
 
 export function findUser(username) {

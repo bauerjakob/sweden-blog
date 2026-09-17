@@ -37,6 +37,19 @@ export interface EntryInput {
   photos?: ApiPhoto[]
 }
 
+export interface ApiAbout {
+  /** Heading as written; newlines are deliberate line breaks. */
+  title: string
+  bodyHtml: string
+  excerpt: string
+  updatedAt: string
+}
+
+export interface AboutInput {
+  title: string
+  bodyMd: string
+}
+
 class ApiError extends Error {
   status: number
   constructor(message: string, status: number) {
@@ -91,6 +104,15 @@ export const api = {
     }),
   deleteEntry: (slug: string) =>
     request<{ ok: true }>(`/api/entries/${encodeURIComponent(slug)}`, { method: 'DELETE' }),
+
+  // About — a single editable page.
+  getAbout: () => request<{ about: ApiAbout | null }>('/api/about'),
+  getAboutSource: () => request<{ about: AboutInput }>('/api/about/source'),
+  updateAbout: (input: AboutInput) =>
+    request<{ about: ApiAbout }>('/api/about', {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
 
   // Photos — multipart upload (no JSON content-type; browser sets boundary).
   uploadPhoto: async (file: File): Promise<{ photo: ApiPhoto }> => {

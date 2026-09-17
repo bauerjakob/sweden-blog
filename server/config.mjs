@@ -10,6 +10,7 @@ export const DB_PATH = path.join(DATA_DIR, 'sweden-blog.db')
 export const DIST_DIR = path.join(ROOT, 'dist')
 export const SEED_PHOTOS_DIR = path.join(ROOT, 'public', 'photos')
 export const ENTRIES_SEED_DIR = path.join(ROOT, 'content', 'entries')
+export const ABOUT_SEED_PATH = path.join(ROOT, 'content', 'about.md')
 export const MANIFEST_PATH = path.join(ROOT, 'src', 'content', 'photos.manifest.json')
 
 // Dev default avoids the common :3000 clash (e.g. OrbStack). Production sets
