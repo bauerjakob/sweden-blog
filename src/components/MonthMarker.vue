@@ -2,7 +2,6 @@
 defineProps<{
   month: string
   year: number
-  count: number
 }>()
 </script>
 
@@ -10,10 +9,7 @@ defineProps<{
   <div class="month">
     <div class="month__pill glass">
       <span class="month__name font-display">{{ month }}</span>
-      <span class="month__meta">
-        <span class="month__year">{{ year }}</span>
-        <span class="month__count">{{ count }} {{ count === 1 ? 'note' : 'notes' }}</span>
-      </span>
+      <span class="month__year">{{ year }}</span>
     </div>
   </div>
 </template>
@@ -44,21 +40,9 @@ defineProps<{
   line-height: 1;
   color: var(--scene-ink);
 }
-.month__meta {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  font-variant-numeric: tabular-nums;
-}
 .month__year {
   font-size: 0.95rem;
   color: var(--color-ochre-bright);
   font-variant-numeric: tabular-nums;
-}
-.month__count {
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--scene-ink-muted);
 }
 </style>

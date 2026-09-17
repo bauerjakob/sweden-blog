@@ -60,7 +60,7 @@ useAmbientDaylight(root)
       class="month-block"
       :aria-label="group.label"
     >
-      <MonthMarker :month="group.label.split(' ')[0]" :year="group.year" :count="group.entries.length" />
+      <MonthMarker :month="group.label.split(' ')[0]" :year="group.year" />
       <EntryCard
         v-for="entry in group.entries"
         :key="entry.slug"
@@ -76,7 +76,9 @@ useAmbientDaylight(root)
 .timeline {
   max-width: 72rem;
   margin: 0 auto;
-  padding: 0 clamp(1rem, 4vw, 2rem) 2rem;
+  /* No bottom padding: the last entry's own padding is the gap to the footer,
+     and doubling them is what made the end of the timeline feel unfinished. */
+  padding: 0 clamp(1rem, 4vw, 2rem);
 }
 
 /* Cover — the journal's title page. Uses the newest entry's daylight so it

@@ -26,7 +26,14 @@ const year = new Date().getFullYear()
   were last scrolled to.
 */
 .foot {
-  margin-top: 5rem;
+  /*
+    Close, on purpose. The page above already ends in whitespace — every entry
+    carries its own bottom padding — so a tall margin here stacked on top of
+    that and left the last photo stranded above an empty band, worst on a phone
+    where the band was most of a screen. The hairline is what ends the page;
+    it only needs enough air to read as deliberate.
+  */
+  margin-top: clamp(1.5rem, 3vw, 2.25rem);
   border-top: 1px solid var(--glass-hairline);
 }
 .foot__inner {

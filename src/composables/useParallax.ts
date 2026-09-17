@@ -19,7 +19,9 @@ import { onMounted, onUnmounted, type Ref } from 'vue'
  * its photos asynchronously, so a one-shot scan at mount would find nothing.
  *
  * Writes `--parallax-y` / `--parallax-scale`; the CSS decides what to do with
- * them. Fully disabled under prefers-reduced-motion.
+ * them. Fully disabled under prefers-reduced-motion, and on phone-width
+ * screens — see NO_PARALLAX. The reveal-on-scroll animations are a separate
+ * composable and stay on everywhere.
  */
 
 interface Item {
@@ -44,6 +46,16 @@ const SAFE_TRAVEL = 0.78
 const EASE = 0.14
 /** Below this the offset is close enough to call it arrived. */
 const EPSILON = 0.05
+/*
+  Where the drift is switched off. The same width at which the timeline gives
+  up its alternating two-column layout (see EntryCard): below it a photo is
+  full-bleed and nearly as tall as the viewport, so the drift has no still
+  surround to be measured against — it reads as the picture sliding in its
+  frame rather than as depth, and it costs a scroll-linked rAF loop on exactly
+  the devices least able to spare one. The oversize goes with it, so a phone
+  gets the photo at its natural crop instead of a zoomed one that never moves.
+*/
+const NO_PARALLAX = '(prefers-reduced-motion: reduce), (max-width: 51.24rem)'
 
 export function useParallax(container: Ref<HTMLElement | null>, speedScale = 1) {
   let raf = 0
@@ -52,7 +64,7 @@ export function useParallax(container: Ref<HTMLElement | null>, speedScale = 1) 
   let observer: IntersectionObserver | null = null
   let mutations: MutationObserver | null = null
   let scanRaf = 0
-  const tracked = new WeakSet<Element>()
+  let tracked = new WeakSet<Element>()
 
   function measure() {
     const vh = window.innerHeight
@@ -117,10 +129,9 @@ export function useParallax(container: Ref<HTMLElement | null>, speedScale = 1) 
     start()
   }
 
-  onMounted(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  function enable() {
     const host = container.value
-    if (!host) return
+    if (!host || observer) return
 
     // Only elements on screen are measured or eased.
     observer = new IntersectionObserver(
@@ -144,15 +155,42 @@ export function useParallax(container: Ref<HTMLElement | null>, speedScale = 1) 
 
     window.addEventListener('scroll', start, { passive: true })
     window.addEventListener('resize', start, { passive: true })
-  })
+  }
 
-  onUnmounted(() => {
+  function disable() {
     window.removeEventListener('scroll', start)
     window.removeEventListener('resize', start)
     observer?.disconnect()
+    observer = null
     mutations?.disconnect()
+    mutations = null
     cancelAnimationFrame(raf)
     cancelAnimationFrame(scanRaf)
     running = false
+    // Hand every element back to the CSS defaults: no drift, no oversize. The
+    // scale is transitioned, so a photo eases out of its crop rather than
+    // jumping when a window is dragged narrow.
+    for (const it of items) {
+      it.el.style.removeProperty('--parallax-y')
+      it.el.style.removeProperty('--parallax-scale')
+    }
+    items = []
+    tracked = new WeakSet()
+  }
+
+  // Not read once at mount: rotating a phone or dragging a window across the
+  // breakpoint has to be able to start the effect as well as stop it.
+  let query: MediaQueryList | null = null
+  const sync = () => (query?.matches ? disable() : enable())
+
+  onMounted(() => {
+    query = window.matchMedia(NO_PARALLAX)
+    query.addEventListener('change', sync)
+    sync()
+  })
+
+  onUnmounted(() => {
+    query?.removeEventListener('change', sync)
+    disable()
   })
 }
