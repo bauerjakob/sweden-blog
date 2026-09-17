@@ -18,6 +18,7 @@ export interface ApiEntry {
   location?: string
   tags: string[]
   unlisted: boolean
+  hasPage: boolean
   bodyHtml: string
   excerpt: string
   hasBody: boolean
@@ -30,6 +31,7 @@ export interface EntryInput {
   location?: string
   tags?: string[]
   unlisted?: boolean
+  hasPage?: boolean
   bodyMd?: string
   slug?: string
   photos?: ApiPhoto[]

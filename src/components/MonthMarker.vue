@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <div class="month">
-    <div class="month__pill">
+    <div class="month__pill glass">
       <span class="month__name font-display">{{ month }}</span>
       <span class="month__meta">
         <span class="month__year">{{ year }}</span>
@@ -19,31 +19,30 @@ defineProps<{
 </template>
 
 <style scoped>
-/* Sticky chapter tab. Keeps its own dark chrome so it stays legible whether it
-   floats over a deep-winter or bleached-summer scene. */
+/* Chapter tab. Same liquid glass as the header, so it picks up the colour of
+   the season it sits in rather than keeping its own dark chrome.
+
+   Deliberately not sticky. Pinned, it stayed for the whole month block and so
+   spent most of its time parked on top of an entry's text — and the header
+   auto-hiding on mobile exposed it exactly when it was over prose. A chapter
+   label that is always on screen isn't worth reading around. */
 .month {
-  position: sticky;
-  top: 0.75rem;
+  position: relative;
   z-index: 20;
   pointer-events: none;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 .month__pill {
   display: inline-flex;
   align-items: baseline;
   gap: 0.9rem;
   padding: 0.5rem 1.1rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(12, 22, 28, 0.82);
-  backdrop-filter: blur(8px) saturate(1.1);
-  -webkit-backdrop-filter: blur(8px) saturate(1.1);
-  border: 1px solid rgba(242, 237, 225, 0.14);
-  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+  border-radius: var(--r-pill);
 }
 .month__name {
   font-size: clamp(1.5rem, 4.5vw, 2.1rem);
   line-height: 1;
-  color: #f4efe4;
+  color: var(--scene-ink);
 }
 .month__meta {
   display: inline-flex;
@@ -60,6 +59,6 @@ defineProps<{
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(242, 237, 225, 0.6);
+  color: var(--scene-ink-muted);
 }
 </style>

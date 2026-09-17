@@ -30,8 +30,8 @@ export function apiToEntry(a: ApiEntry): Entry {
     monthKey: a.dateISO.slice(0, 7),
     title: a.title || undefined,
     location: a.location || undefined,
-    tags: a.tags ?? [],
     unlisted: a.unlisted,
+    hasPage: a.hasPage ?? true,
     bodyHtml: a.bodyHtml,
     excerpt: a.excerpt,
     hasBody: a.hasBody,
@@ -104,12 +104,4 @@ export function groupByMonth(list: Entry[]): MonthGroup[] {
       const [year, month] = key.split('-').map(Number)
       return { key, label: `${MONTHS[month - 1]} ${year}`, year, entries: es }
     })
-}
-
-export function allTags(list: Entry[]): { tag: string; count: number }[] {
-  const counts = new Map<string, number>()
-  for (const e of list) for (const t of e.tags) counts.set(t, (counts.get(t) ?? 0) + 1)
-  return [...counts.entries()]
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
 }

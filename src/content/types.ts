@@ -19,15 +19,16 @@ export interface Photo {
 
 export interface Entry {
   slug: string
-  /** Local date at Göteborg; time is irrelevant. */
+  /** Local date at Stockholm; time is irrelevant. */
   date: Date
   dateISO: string // YYYY-MM-DD
   /** e.g. "2026-02" — used to group the timeline by month. */
   monthKey: string
   title?: string
   location?: string
-  tags: string[]
   unlisted: boolean
+  /** Whether this entry has a page of its own, or lives only in the timeline. */
+  hasPage: boolean
   bodyHtml: string
   /** Plain-text first line, for excerpts and Open Graph descriptions. */
   excerpt: string

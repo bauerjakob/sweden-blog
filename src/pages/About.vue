@@ -16,7 +16,7 @@ onMounted(() => {
   applyDocumentMeta({
     title: 'About — Ett halvår i Sverige',
     description:
-      'Who I am, where I am, and why this site exists: a photo journal from an exchange semester in Göteborg.',
+      'Who I am, where I am, and why this site exists: a photo journal from an exchange semester in Stockholm.',
     type: 'website',
   })
 })
@@ -32,8 +32,8 @@ const count = computed(() => publicEntries.value.length)
 
       <div class="about__prose prose-journal">
         <p>
-          Hej. I'm a 23-year-old spending an exchange semester at Chalmers in
-          <strong>Göteborg</strong>, on the west coast of Sweden. This is where I
+          Hej. I'm a 23-year-old spending an exchange semester in
+          <strong>Stockholm</strong>, winter semester 2026/27. This is where I
           keep the semester — a photo and a couple of sentences at a time, in the
           order it happened.
         </p>
@@ -50,8 +50,8 @@ const count = computed(() => publicEntries.value.length)
         <p>
           If you scroll the timeline you'll notice the page gets darker and
           lighter. That's not a mood board — it's real. Every entry is tinted by
-          how much daylight Göteborg actually had that day, from about six and a
-          half hours at the December solstice to over eighteen at midsummer. The
+          how much daylight Stockholm actually had that day, from just over six
+          hours at the December solstice to over eighteen at midsummer. The
           winter really is that dark, and the summer really doesn't end. Watching
           the page change as you read it is the closest I could get to explaining
           what the light does to a place.

@@ -20,6 +20,7 @@ function toRow(n, slug) {
     location: n.location,
     tags: JSON.stringify(n.tags),
     unlisted: n.unlisted ? 1 : 0,
+    has_page: n.hasPage ? 1 : 0,
     body_md: n.bodyMd,
     body_html: n.bodyHtml,
     has_body: n.hasBody ? 1 : 0,

@@ -8,14 +8,21 @@
   DAYLIGHT
   --------
   One idea, carried everywhere: each entry's date sets how much daylight
-  Göteborg had that day, and that drives the *page* mood — deep petrol-black
+  Stockholm had that day, and that drives the *page* mood — deep petrol-black
   in December, bleached birch-white in June. The reading surface itself stays
   a solid, contrast-checked panel so legibility never pays for the mood.
 
-  The concrete colours are computed per entry in src/lib/daylight.ts and set
-  as the custom properties below on a wrapping element. Everything here just
-  consumes them, so a single entry, the timeline, and the detail page all
-  share one visual language.
+  Two families of custom properties do the work:
+
+  --day-*    the palette of ONE entry. Computed in src/lib/daylight.ts and set
+             on a wrapping element, so an entry card, the timeline and the
+             detail page all speak the same visual language.
+  --scene-*  the palette of WHEREVER YOU ARE. useAmbientDaylight blends between
+             the two entries nearest the focus line and writes the result to
+             <html>. The page background and every pane of glass — header,
+             month tabs, footer — read these, which is why the chrome takes on
+             the colour of the season you're scrolled to instead of sitting in
+             its own fixed dark box.
 */
 
 @theme {
@@ -32,18 +39,112 @@
 
 :root {
   /* Sensible defaults; overwritten per entry by daylight.ts. */
-  --day-page: #0d1a21;
-  --day-page-2: #0a141b;
-  --day-panel: #12242c;
+  --day-page: #112129;
+  --day-page-2: #0d1920;
+  --day-panel: #1a2e36;
   --day-ink: #f2ede1;
   --day-ink-muted: #adc0c4;
   --day-hairline: color-mix(in srgb, var(--day-ink) 16%, transparent);
   --day-accent: var(--color-ochre);
   --day-shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* Ambient scene — the blended palette of whatever you're scrolled to.
+     Defaults match the winter palette above so the first paint is correct. */
+  --scene-page: #112129;
+  --scene-page-2: #0d1920;
+  --scene-panel: #1a2e36;
+  --scene-ink: #f2ede1;
+  --scene-ink-muted: #adc0c4;
+  --scene-lum: 0; /* 0 = deep winter, 1 = midsummer */
+
+  /* Corner radius. Generous and consistent — the single biggest lever on
+     whether a layout reads as current or as 2014. */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 30px;
+  --r-pill: 999px;
+
+  /* Motion. One spring-ish curve for entrances, one snappy curve for input. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
+  --ease-quick: cubic-bezier(0.4, 0, 0.2, 1);
+
   color-scheme: dark;
 }
 
+/*
+  LIQUID GLASS
+  ------------
+  Everything that floats over the timeline — the header, the month tabs, the
+  footer — is one material, defined once here and reused. It is built out of
+  --scene-*, so it is never "the dark bar": over a December entry it is smoked
+  petrol, over a June entry it is frosted white, and it crossfades between the
+  two as you scroll because the scene vars themselves are being blended.
+
+  The parts that make it read as glass rather than as a flat translucent box:
+    tint       a wash of the page colour behind it, not black
+    spec       a bright hairline along the top edge — the specular highlight
+               where light catches a lens; scales with how bright the scene is
+    hairline   an ink-derived border, so it holds an edge on light scenes too
+*/
+:root {
+  --glass-tint: color-mix(in srgb, var(--scene-page) 68%, transparent);
+  --glass-tint-strong: color-mix(in srgb, var(--scene-page) 86%, transparent);
+  --glass-hairline: color-mix(in srgb, var(--scene-ink) 14%, transparent);
+  --glass-spec: rgb(255 255 255 / calc(0.07 + var(--scene-lum) * 0.5));
+  --glass-shadow: 0 20px 50px -34px rgb(0 0 0 / calc(0.85 - var(--scene-lum) * 0.45));
+  --glass-blur: blur(22px) saturate(180%);
+}
+
+.glass {
+  background: var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-hairline);
+  box-shadow:
+    inset 0 1px 0 var(--glass-spec),
+    var(--glass-shadow);
+}
+
+/*
+  The same material at chip scale — tags, small gauges, anything pill-sized.
+
+  Two things change, and both are forced by the size. A 50px drop shadow and a
+  22px blur are simply illegible under a 24px-tall pill: they turn to mush and
+  cost a compositor layer for nothing, so the shadow goes and the blur comes
+  down. And the tint is mixed from --day-* rather than --scene-*, because a chip
+  sits *inside* an entry: it has to hold its contrast against that entry's own
+  ink, not against the blended scene outside it. A February tag on a bleached
+  June page would otherwise be tinted for the wrong season.
+
+  No specular top edge either. It is white-on-dark by nature, and at this size
+  there is no room to invert it for a light scene — better absent than wrong.
+*/
+.glass-chip {
+  background: color-mix(in srgb, var(--day-ink) 7%, transparent);
+  backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--day-ink) 15%, transparent);
+}
+
+/* Where backdrop-filter isn't available the tint alone would be too sheer to
+   read text against, so fall back to a near-opaque pane. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--glass-tint-strong);
+  }
+  .glass-chip {
+    background: color-mix(in srgb, var(--day-ink) 11%, transparent);
+  }
+}
+
 html {
+  /* The cover photo bleeds past the timeline column to the right edge of the
+     window, sized off 100vw — which on a platform with classic scrollbars is
+     wider than the content box. `clip` (not `hidden`) throws that sliver away
+     without turning the root into a scroll container, so the sticky masthead
+     keeps working. */
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
@@ -61,9 +162,19 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  /* --scene-page is driven by the entry nearest the viewport centre; falls
-     back to the winter default before any scene is set. */
-  background-color: var(--scene-page, var(--day-page));
+  /* --scene-page is blended continuously from the entries around the focus
+     line. The transition only has to cover page *navigations*, where the scene
+     jumps; scrolling is already smooth, so a long fade here would just smear. */
+  background-color: var(--scene-page);
+  /* One very soft wash of the secondary scene colour at the top, fixed to the
+     viewport. Just enough to keep a flat fill from reading as dead — no grain,
+     no second pool, nothing you have to look past to read the page. */
+  background-image: radial-gradient(
+    90rem 55rem at 50% -20%,
+    color-mix(in srgb, var(--scene-page-2) 45%, transparent),
+    transparent 65%
+  );
+  background-attachment: fixed;
   color: var(--day-ink);
   font-family: var(--font-body);
   font-size: 1.0625rem; /* 17px floor for body text */
@@ -71,20 +182,7 @@ body {
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background-color 700ms ease;
-}
-
-/* Faint film grain over flat backgrounds. Static, so nothing to disable for
-   reduced motion. You only notice it if you go looking. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.5;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  transition: background-color 260ms linear;
 }
 
 #app {
@@ -137,6 +235,7 @@ body::before {
   text-decoration-color: var(--day-accent);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
+  transition: text-decoration-color 160ms var(--ease-quick);
 }
 .prose-journal a:hover {
   text-decoration-color: var(--color-ochre-bright);
@@ -150,7 +249,7 @@ body::before {
 .prose-journal img {
   max-width: 100%;
   height: auto;
-  border-radius: 2px;
+  border-radius: var(--r-md);
 }
 .prose-journal ul,
 .prose-journal ol {
@@ -172,12 +271,16 @@ body::before {
   font-size: 0.9em;
   background: color-mix(in srgb, var(--day-ink) 10%, transparent);
   padding: 0.1em 0.35em;
-  border-radius: 3px;
+  border-radius: var(--r-xs);
 }
 
-/* A reading panel: the one surface we promise stays legible. */
+/* A reading panel: the one surface we promise stays legible. Solid fill, a
+   hairline to lift it off the scene, and a soft drop so it sits *above* the
+   page rather than being painted onto it. */
 .panel {
   background-color: var(--day-panel);
+  border: 1px solid color-mix(in srgb, var(--day-ink) 8%, transparent);
+  border-radius: var(--r-lg);
   box-shadow: var(--day-shadow);
 }
 
@@ -185,7 +288,7 @@ body::before {
 :where(a, button, [tabindex], input, select, textarea):focus-visible {
   outline: 2px solid var(--color-ochre-bright);
   outline-offset: 3px;
-  border-radius: 2px;
+  border-radius: var(--r-xs);
 }
 
 /* Skip link for keyboard users. */
@@ -193,29 +296,78 @@ body::before {
   position: fixed;
   top: 0.5rem;
   left: 0.5rem;
-  z-index: 50;
+  z-index: 60;
   transform: translateY(-160%);
   background: var(--color-ochre);
   color: #1a1206;
   padding: 0.6rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   font-weight: 600;
-  transition: transform 150ms ease;
+  transition: transform 200ms var(--ease-spring);
 }
 .skip-link:focus {
   transform: translateY(0);
 }
 
-/* Reveal-on-scroll. The reduce block below is the real toggle. */
+/*
+  REVEAL-ON-SCROLL
+  ----------------
+  Rise, fade and settle from a hair under scale. Elements inside a
+  [data-reveal-group] carry --reveal-i and arrive in sequence. Direction
+  variants let a card enter from the side it lives on, which is what makes the
+  alternating timeline feel composed rather than uniformly bouncy.
+  The reduce block below is the real toggle.
+*/
 .reveal {
   opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 800ms ease, transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 22px), 0)
+    scale(var(--reveal-s, 0.985));
+  transition:
+    opacity 700ms var(--ease-out),
+    transform 900ms var(--ease-out);
+  transition-delay: calc(var(--reveal-i, 0) * 70ms);
   will-change: opacity, transform;
 }
 .reveal.is-in {
   opacity: 1;
   transform: none;
+}
+/* Once it has arrived, stop claiming a compositor layer. */
+.reveal.is-in {
+  will-change: auto;
+}
+.reveal--left {
+  --reveal-x: -26px;
+  --reveal-y: 12px;
+}
+.reveal--right {
+  --reveal-x: 26px;
+  --reveal-y: 12px;
+}
+.reveal--rise {
+  --reveal-y: 40px;
+  --reveal-s: 1;
+}
+
+/*
+  TOUCH FEEDBACK
+  --------------
+  On a phone there is no hover to tell you a thing is tappable, so the
+  acknowledgement has to come on press instead. Only applied where hover is
+  genuinely unavailable, so it never fights a mouse.
+*/
+@media (hover: none) {
+  .tap {
+    transition: transform 180ms var(--ease-spring);
+  }
+  .tap:active {
+    transform: scale(0.972);
+  }
+  /* Stop iOS painting its own grey box over our own feedback. */
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -223,6 +375,9 @@ body::before {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+  .tap:active {
+    transform: none;
   }
   *,
   *::before,

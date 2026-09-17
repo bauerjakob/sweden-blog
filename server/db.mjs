@@ -28,6 +28,7 @@ db.exec(`
     location TEXT,
     tags TEXT NOT NULL DEFAULT '[]',
     unlisted INTEGER NOT NULL DEFAULT 0,
+    has_page INTEGER NOT NULL DEFAULT 1,
     body_md TEXT NOT NULL DEFAULT '',
     body_html TEXT NOT NULL DEFAULT '',
     has_body INTEGER NOT NULL DEFAULT 0,
@@ -50,6 +51,17 @@ db.exec(`
     value TEXT
   );
 `)
+
+/*
+  Migration. `CREATE TABLE IF NOT EXISTS` above does nothing to a table that
+  already exists, so a column added after the first release needs its own route
+  in. Defaulting to 1 is what makes this safe: every entry written before the
+  option existed keeps the page it already had.
+*/
+const entryColumns = db.prepare('PRAGMA table_info(entries)').all().map((c) => c.name)
+if (!entryColumns.includes('has_page')) {
+  db.exec('ALTER TABLE entries ADD COLUMN has_page INTEGER NOT NULL DEFAULT 1')
+}
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/
 
@@ -203,8 +215,8 @@ export function uniqueSlug(base, exceptId = null) {
 export function insertEntry(e) {
   const info = db
     .prepare(
-      `INSERT INTO entries (slug, date, title, location, tags, unlisted, body_md, body_html, has_body, excerpt, photos)
-       VALUES (@slug, @date, @title, @location, @tags, @unlisted, @body_md, @body_html, @has_body, @excerpt, @photos)`,
+      `INSERT INTO entries (slug, date, title, location, tags, unlisted, has_page, body_md, body_html, has_body, excerpt, photos)
+       VALUES (@slug, @date, @title, @location, @tags, @unlisted, @has_page, @body_md, @body_html, @has_body, @excerpt, @photos)`,
     )
     .run(e)
   return db.prepare('SELECT * FROM entries WHERE id = ?').get(info.lastInsertRowid)
@@ -213,8 +225,8 @@ export function insertEntry(e) {
 export function updateEntry(id, e) {
   db.prepare(
     `UPDATE entries SET slug=@slug, date=@date, title=@title, location=@location, tags=@tags,
-       unlisted=@unlisted, body_md=@body_md, body_html=@body_html, has_body=@has_body,
-       excerpt=@excerpt, photos=@photos, updated_at=datetime('now')
+       unlisted=@unlisted, has_page=@has_page, body_md=@body_md, body_html=@body_html,
+       has_body=@has_body, excerpt=@excerpt, photos=@photos, updated_at=datetime('now')
      WHERE id=@id`,
   ).run({ ...e, id })
   return db.prepare('SELECT * FROM entries WHERE id = ?').get(id)

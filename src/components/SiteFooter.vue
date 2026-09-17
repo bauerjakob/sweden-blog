@@ -1,64 +1,45 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
 const year = new Date().getFullYear()
 </script>
 
 <template>
   <footer class="foot">
     <div class="foot__inner">
-      <p class="foot__line">
-        A photo journal from an exchange semester in Göteborg.
-      </p>
-      <nav class="foot__nav" aria-label="Footer">
-        <RouterLink to="/">Timeline</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-      <p class="foot__fine">Made by hand · {{ year }}. No trackers, no cookies, nothing counted.</p>
+      <p class="foot__fine">Stockholm · {{ year }}</p>
     </div>
   </footer>
 </template>
 
 <style scoped>
+/*
+  The end of the page, and not much more than that. It used to restate the whole
+  pitch in display serif and then again in fine print — but by the time you are
+  down here you have read the thing, and the about page says all of it properly.
+  It also used to repeat the header's two links; the header carries them on
+  every page, including in the mobile sheet, so down here they were a second
+  copy of a menu you already have. What is left is the line that dates the
+  journal.
+
+  No glass either: the footer is not sticky, so nothing ever passes behind it
+  and the material had nothing to do. One hairline is enough to say the page has
+  ended, and drawn in the ambient ink it still belongs to whatever season you
+  were last scrolled to.
+*/
 .foot {
-  margin-top: 4rem;
-  border-top: 1px solid rgba(160, 170, 175, 0.18);
-  background: rgba(10, 18, 24, 0.55);
+  margin-top: 5rem;
+  border-top: 1px solid var(--glass-hairline);
 }
 .foot__inner {
   max-width: 72rem;
   margin: 0 auto;
-  padding: 2.5rem clamp(1rem, 4vw, 2rem) 3.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  color: #cfd8d9;
-}
-.foot__line {
-  font-family: var(--font-display);
-  font-variation-settings: 'opsz' 40, 'wght' 480;
-  font-size: 1.2rem;
-  margin: 0;
-  color: #f4efe4;
-  max-width: 30ch;
-}
-.foot__nav {
-  display: flex;
-  gap: 1.2rem;
-}
-.foot__nav a {
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
+  padding: 1.6rem clamp(1rem, 4vw, 2rem) 2.25rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #cfd8d9;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-}
-.foot__nav a:hover {
-  border-bottom-color: var(--color-ochre);
+  color: var(--scene-ink-muted);
 }
 .foot__fine {
-  font-size: 0.75rem;
-  color: rgba(207, 216, 217, 0.6);
   margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 </style>

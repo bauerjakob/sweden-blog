@@ -2,7 +2,19 @@
 import { computed } from 'vue'
 import type { DaylightInfo } from '@/lib/daylight'
 
-const props = defineProps<{ info: DaylightInfo }>()
+/**
+ * Two sizes, because the same reading carries very different weight depending
+ * on where it sits.
+ *
+ * The full gauge belongs on an entry's own page, where you came to look at that
+ * one day and the sunrise/sunset times are worth reading. In the timeline it
+ * repeats once per entry, so it runs `compact`: a single quiet line, ink rather
+ * than ochre, no times — a footnote to the date, not a second headline.
+ */
+const props = withDefaults(
+  defineProps<{ info: DaylightInfo; compact?: boolean }>(),
+  { compact: false },
+)
 
 // Position sunrise/sunset across a 24-hour track (0–1).
 const band = computed(() => {
@@ -19,6 +31,8 @@ const band = computed(() => {
 const startPct = computed(() => `${band.value.start * 100}%`)
 const widthPct = computed(() => `${(band.value.end - band.value.start) * 100}%`)
 
+// The compact gauge drops the times on screen, but a screen reader still gets
+// the whole reading either way.
 const srText = computed(() => {
   const { label, sunriseLabel, sunsetLabel } = props.info
   if (sunriseLabel && sunsetLabel) {
@@ -29,25 +43,38 @@ const srText = computed(() => {
 </script>
 
 <template>
-  <div class="daylight" role="img" :aria-label="srText">
+  <div
+    class="daylight"
+    :class="{ 'daylight--compact': compact }"
+    role="img"
+    :aria-label="srText"
+  >
     <div class="daylight__label">
-      <span class="daylight__hours font-display-tight">{{ info.label }}</span>
-      <span class="daylight__caption">of daylight</span>
+      <span class="daylight__hours" :class="{ 'font-display-tight': !compact }">
+        {{ info.label }}
+      </span>
+      <span class="daylight__caption">{{ compact ? 'light' : 'of daylight' }}</span>
     </div>
     <div class="daylight__track" aria-hidden="true">
       <div class="daylight__fill" :style="{ left: startPct, width: widthPct }"></div>
-      <span
-        v-if="info.sunriseLabel"
-        class="daylight__tick"
-        :style="{ left: startPct }"
-      ></span>
-      <span
-        v-if="info.sunsetLabel"
-        class="daylight__tick"
-        :style="{ left: `calc(${startPct} + ${widthPct})` }"
-      ></span>
+      <template v-if="!compact">
+        <span
+          v-if="info.sunriseLabel"
+          class="daylight__tick"
+          :style="{ left: startPct }"
+        ></span>
+        <span
+          v-if="info.sunsetLabel"
+          class="daylight__tick"
+          :style="{ left: `calc(${startPct} + ${widthPct})` }"
+        ></span>
+      </template>
     </div>
-    <div v-if="info.sunriseLabel && info.sunsetLabel" class="daylight__times" aria-hidden="true">
+    <div
+      v-if="!compact && info.sunriseLabel && info.sunsetLabel"
+      class="daylight__times"
+      aria-hidden="true"
+    >
       <span>↑&thinsp;{{ info.sunriseLabel }}</span>
       <span>↓&thinsp;{{ info.sunsetLabel }}</span>
     </div>
@@ -89,10 +116,11 @@ const srText = computed(() => {
   top: 0;
   bottom: 0;
   border-radius: 999px;
+  /* Ochre, but held back — the band marks the day, it doesn't advertise it. */
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-ochre) 55%, transparent),
-    var(--color-ochre-bright)
+    color-mix(in srgb, var(--color-ochre) 30%, transparent),
+    color-mix(in srgb, var(--color-ochre) 70%, transparent)
   );
 }
 .daylight__tick {
@@ -103,7 +131,7 @@ const srText = computed(() => {
   margin-left: -1.5px;
   transform: translateY(-50%);
   border-radius: 2px;
-  background: var(--day-ink);
+  background: color-mix(in srgb, var(--day-ink) 55%, transparent);
 }
 .daylight__times {
   display: flex;
@@ -111,5 +139,34 @@ const srText = computed(() => {
   font-size: 0.72rem;
   color: var(--day-ink-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- Compact: one line, in the timeline ---------------- */
+.daylight--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: none;
+}
+.daylight--compact .daylight__label {
+  gap: 0.3rem;
+}
+.daylight--compact .daylight__hours {
+  font-size: 0.74rem;
+  color: var(--day-ink-muted);
+}
+.daylight--compact .daylight__caption {
+  font-size: 0.74rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.daylight--compact .daylight__track {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2px;
+}
+/* No ochre down here: in the timeline the only accent should be the writing. */
+.daylight--compact .daylight__fill {
+  background: color-mix(in srgb, var(--day-ink) 40%, transparent);
 }
 </style>

@@ -2,8 +2,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { publicEntries, allLoaded, groupByMonth } from '@/content/store'
+import { sceneAttrs } from '@/lib/daylight'
 import { isLoggedIn } from '@/stores/auth'
 import { useReveal } from '@/composables/useReveal'
+import { useParallax } from '@/composables/useParallax'
 import { useAmbientDaylight, setSceneVars } from '@/composables/useAmbientDaylight'
 import { useDocumentMeta } from '@/composables/useDocumentMeta'
 import MonthMarker from '@/components/MonthMarker.vue'
@@ -20,17 +22,10 @@ const first = computed(() => entries.value[0])
 // across month boundaries, not reset per month.
 const indexOf = computed(() => new Map(entries.value.map((e, i) => [e.slug, i])))
 
-const darkest = computed(() =>
-  entries.value.reduce((a, b) => (b.daylight.hours < a.daylight.hours ? b : a)),
-)
-const brightest = computed(() =>
-  entries.value.reduce((a, b) => (b.daylight.hours > a.daylight.hours ? b : a)),
-)
-
 useDocumentMeta({
   title: 'Ett halvår i Sverige — a semester in Sweden',
   description:
-    'A photo journal from an exchange semester in Göteborg. A photo and a few sentences at a time, newest first.',
+    'A photo journal from an exchange semester in Stockholm. A photo and a few sentences at a time, newest first.',
 })
 
 onMounted(() => {
@@ -38,6 +33,7 @@ onMounted(() => {
 })
 
 useReveal(() => root.value)
+useParallax(root)
 useAmbientDaylight(root)
 </script>
 
@@ -47,20 +43,15 @@ useAmbientDaylight(root)
       v-if="first"
       class="cover"
       :style="first.daylight.vars"
+      v-bind="sceneAttrs(first.daylight)"
     >
-      <p class="cover__eyebrow">A photo journal</p>
-      <h1 class="cover__title font-display">One semester<br />of Swedish light</h1>
+      <h1 class="cover__title font-display" data-parallax="0.16" data-header-handoff>
+        My semester<br />in Stockholm
+      </h1>
       <p class="cover__lead">
-        Göteborg, January to June 2026. A photo and a few sentences at a time —
-        newest first. The page darkens and brightens with the real daylight of
-        each day.
+        My journal from an exchange semester, winter semester 2026/27.
       </p>
-      <p class="cover__meta">
-        {{ entries.length }} notes ·
-        from <strong>{{ darkest.daylight.label }}</strong> of daylight in the deep of winter
-        to <strong>{{ brightest.daylight.label }}</strong> at midsummer
-      </p>
-      <RouterLink v-if="isLoggedIn" to="/new" class="cover__new">＋ New entry</RouterLink>
+      <RouterLink v-if="isLoggedIn" to="/new" class="cover__new tap">＋ New entry</RouterLink>
     </section>
 
     <section
@@ -95,13 +86,6 @@ useAmbientDaylight(root)
   border-bottom: 1px solid var(--day-hairline);
   margin-bottom: 1rem;
 }
-.cover__eyebrow {
-  font-size: 0.75rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--day-ink-muted);
-  margin: 0 0 1rem;
-}
 .cover__title {
   font-size: clamp(2.8rem, 11vw, 6.5rem);
   line-height: 0.92;
@@ -109,39 +93,35 @@ useAmbientDaylight(root)
   color: var(--day-ink);
   margin: 0 0 1.4rem;
   font-variation-settings: 'opsz' 144, 'SOFT' 40, 'WONK' 1, 'wght' 420;
+  /* Drifts a little slower than the page, so the title feels set behind the
+     text that follows it rather than glued to it. */
+  transform: translate3d(0, var(--parallax-y, 0), 0);
 }
 .cover__lead {
   font-size: clamp(1.05rem, 2.5vw, 1.3rem);
   line-height: 1.5;
-  max-width: 34ch;
-  color: var(--day-ink);
-  margin: 0 0 1.6rem;
-}
-.cover__meta {
-  font-size: 0.92rem;
-  line-height: 1.6;
-  max-width: 46ch;
+  max-width: 38ch;
   color: var(--day-ink-muted);
   margin: 0;
-}
-.cover__meta strong {
-  color: var(--day-ink);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 .cover__new {
   display: inline-block;
   margin-top: 1.75rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 999px;
-  background: var(--color-ochre);
+  padding: 0.7rem 1.35rem;
+  border-radius: var(--r-pill);
+  background: linear-gradient(140deg, var(--color-ochre-bright), var(--color-ochre));
   color: #1a1206;
   font-weight: 600;
   font-size: 0.9rem;
   text-decoration: none;
+  box-shadow: 0 12px 28px -16px color-mix(in srgb, var(--color-ochre) 90%, transparent);
+  transition:
+    transform 260ms var(--ease-spring),
+    box-shadow 260ms var(--ease-out);
 }
 .cover__new:hover {
-  filter: brightness(1.06);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px -16px color-mix(in srgb, var(--color-ochre) 95%, transparent);
 }
 
 .month-block + .month-block {

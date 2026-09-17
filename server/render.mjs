@@ -81,7 +81,9 @@ export function htmlForRequest(req) {
   const entryMatch = p.match(/^\/entry\/([^/]+)\/?$/)
   if (entryMatch) {
     const row = getEntryBySlug(entryMatch[1])
-    if (row) {
+    // No page, no page metadata: an entry that lives only in the timeline has
+    // nothing at this URL for a crawler or a link preview to describe.
+    if (row && row.has_page) {
       const e = toApiEntry(row)
       const label = e.title ?? e.dateISO
       return injectHead(tpl, {
@@ -94,23 +96,11 @@ export function htmlForRequest(req) {
     }
   }
 
-  const tagMatch = p.match(/^\/tags\/([^/]+)\/?$/)
-  if (tagMatch) {
-    const tag = tagMatch[1]
-    return injectHead(tpl, {
-      title: `#${tag} — ${SITE_NAME}`,
-      description: `Entries tagged “${tag}” from a semester in Göteborg.`,
-      url: `${base}/tags/${tag}`,
-      type: 'website',
-      image: null,
-    })
-  }
-
   if (p === '/about') {
     return injectHead(tpl, {
       title: `About — ${SITE_NAME}`,
       description:
-        'Who I am, where I am, and why this site exists: a photo journal from an exchange semester in Göteborg.',
+        'Who I am, where I am, and why this site exists: a photo journal from an exchange semester in Stockholm.',
       url: `${base}/about`,
       type: 'website',
       image: null,
@@ -121,7 +111,7 @@ export function htmlForRequest(req) {
   return injectHead(tpl, {
     title: `${SITE_NAME} — a semester in Sweden`,
     description:
-      'A photo journal from an exchange semester in Göteborg. A photo and a few sentences at a time, newest first.',
+      'A photo journal from an exchange semester in Stockholm. A photo and a few sentences at a time, newest first.',
     url: `${base}/`,
     type: 'website',
     image: null,

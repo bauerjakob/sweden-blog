@@ -100,6 +100,10 @@ export function normaliseEntryInput(input) {
     location: input.location ? String(input.location).trim() : null,
     tags,
     unlisted: input.unlisted === true || input.unlisted === 1 || input.unlisted === 'true',
+    // Opt *out*, not in: an entry gets a page unless the editor says otherwise,
+    // so a client that doesn't know about the option can't silently take pages
+    // away from entries that have them.
+    hasPage: !(input.hasPage === false || input.hasPage === 0 || input.hasPage === 'false'),
     bodyMd,
     bodyHtml: html,
     excerpt: isEmpty ? cleanPhotos[0]?.caption || cleanPhotos[0]?.alt || '' : excerptFromHtml(html),
@@ -117,6 +121,7 @@ export function toApiEntry(row) {
     location: row.location || undefined,
     tags: JSON.parse(row.tags || '[]'),
     unlisted: !!row.unlisted,
+    hasPage: !!row.has_page,
     bodyHtml: row.body_html,
     excerpt: row.excerpt,
     hasBody: !!row.has_body,

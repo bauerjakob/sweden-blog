@@ -43,8 +43,11 @@ async function loadEntry(slug: string) {
   loading.value = true
   try {
     const { entry: a } = await api.getEntry(slug)
-    entry.value = apiToEntry(a)
-    const e = entry.value
+    const e = apiToEntry(a)
+    // Timeline-only by the owner's choice: there is deliberately no page here,
+    // so this URL is a 404 like any other address that leads nowhere.
+    if (!e.hasPage) throw new Error('entry has no page')
+    entry.value = e
     setSceneVars(e.daylight.vars)
     const label = e.title ?? `${weekday(e.date)}, ${dayNum(e.date)} ${monthShort(e.date)}`
     applyDocumentMeta({
@@ -126,7 +129,7 @@ useParallax(root)
         </div>
         <p class="head__weekday">{{ weekday(entry.date) }}</p>
         <h1 v-if="entry.title" class="head__title font-display">{{ entry.title }}</h1>
-        <div class="head__daylight">
+        <div class="head__daylight glass-chip">
           <DaylightGauge :info="entry.daylight" />
         </div>
         <p v-if="entry.unlisted" class="head__unlisted">
@@ -140,7 +143,8 @@ useParallax(root)
         :photo="entry.photos[0]"
         :priority="true"
         sizes="(min-width: 1000px) 900px, 100vw"
-        data-parallax
+        data-parallax="0.55"
+        data-parallax-scale="1.18"
       />
 
       <div
@@ -149,28 +153,23 @@ useParallax(root)
         v-html="entry.bodyHtml"
       ></div>
 
-      <div v-if="entry.photos.length > 1" class="gallery">
+      <div v-if="entry.photos.length > 1" class="gallery" data-reveal-group>
         <PhotoFigure
           v-for="p in entry.photos.slice(1)"
           :key="p.src"
-          class="gallery__item reveal"
+          class="gallery__item reveal reveal--rise"
           :photo="p"
           sizes="(min-width: 1000px) 860px, 100vw"
-          data-parallax
+          data-parallax="0.45"
+          data-parallax-scale="1.14"
         />
       </div>
-
-      <ul v-if="entry.tags.length" class="tags">
-        <li v-for="t in entry.tags" :key="t">
-          <RouterLink :to="`/tags/${t}`" class="tag">{{ t }}</RouterLink>
-        </li>
-      </ul>
 
       <nav class="neighbours" aria-label="More entries">
         <RouterLink
           v-if="neighbours.older"
           :to="`/entry/${neighbours.older.slug}`"
-          class="neighbours__link neighbours__link--prev"
+          class="neighbours__link glass neighbours__link--prev"
         >
           <span class="neighbours__dir">Earlier</span>
           <span class="neighbours__label">{{ neighbours.older.title ?? fullDate(neighbours.older.date) }}</span>
@@ -179,7 +178,7 @@ useParallax(root)
         <RouterLink
           v-if="neighbours.newer"
           :to="`/entry/${neighbours.newer.slug}`"
-          class="neighbours__link neighbours__link--next"
+          class="neighbours__link glass neighbours__link--next"
         >
           <span class="neighbours__dir">Later</span>
           <span class="neighbours__label">{{ neighbours.newer.title ?? fullDate(neighbours.newer.date) }}</span>
@@ -313,8 +312,16 @@ useParallax(root)
   max-width: 20ch;
   font-variation-settings: 'opsz' 144, 'SOFT' 40, 'WONK' 1, 'wght' 440;
 }
+/* The one number this page exists to show, on a slab of its own.
+
+   Block with an explicit max-width, not inline-block: the gauge inside is a
+   column flexbox whose track is an empty div, so a shrink-to-fit parent would
+   size the track from the label text instead of from the gauge's own 15rem. */
 .head__daylight {
   margin-top: 1.5rem;
+  max-width: calc(15rem + 2.2rem);
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--r-md);
 }
 .head__unlisted {
   margin-top: 1.25rem;
@@ -331,10 +338,8 @@ useParallax(root)
 .lead {
   margin: 0 clamp(-2rem, -4vw, 0rem) clamp(1.5rem, 4vw, 2.5rem);
 }
-.lead :deep(.figure__img) {
-  transform: translateY(var(--parallax, 0));
-  transition: transform 80ms linear;
-  border-radius: 4px;
+.lead :deep(.figure__frame) {
+  border-radius: var(--r-xl);
 }
 
 .body {
@@ -347,42 +352,12 @@ useParallax(root)
   gap: clamp(1.5rem, 4vw, 2.5rem);
   margin-bottom: 2.5rem;
 }
-.gallery__item :deep(.figure__img) {
-  transform: translateY(var(--parallax, 0));
-  transition: transform 80ms linear;
-}
 /* Alternate the additional photos left/right for a little asymmetry. */
 .gallery__item:nth-child(even) {
   margin-left: clamp(0rem, 8vw, 5rem);
 }
 .gallery__item:nth-child(odd) {
   margin-right: clamp(0rem, 8vw, 5rem);
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  list-style: none;
-  padding: 0;
-  margin: 0 0 2.5rem;
-}
-.tag {
-  font-size: 0.74rem;
-  letter-spacing: 0.06em;
-  color: var(--day-ink-muted);
-  text-decoration: none;
-  padding: 0.2rem 0.65rem;
-  border: 1px solid var(--day-hairline);
-  border-radius: 999px;
-}
-.tag::before {
-  content: '#';
-  opacity: 0.6;
-}
-.tag:hover {
-  color: var(--day-ink);
-  border-color: var(--day-accent);
 }
 
 .neighbours {
@@ -398,11 +373,15 @@ useParallax(root)
   gap: 0.25rem;
   text-decoration: none;
   color: var(--day-ink);
-  padding: 0.75rem;
-  border-radius: 4px;
+  padding: 1rem 1.15rem;
+  border-radius: var(--r-lg);
+  transition:
+    transform 300ms var(--ease-out),
+    border-color 300ms var(--ease-quick);
 }
 .neighbours__link:hover {
-  background: var(--day-hairline);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--day-accent) 55%, transparent);
 }
 .neighbours__link--next {
   text-align: right;

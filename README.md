@@ -1,6 +1,6 @@
 # Ett halvår i Sverige — a semester in Sweden
 
-A small, personal photo journal from an exchange semester in Göteborg. The
+A small, personal photo journal from an exchange semester in Stockholm. The
 homepage is a reverse-chronological **timeline** of short, frequent entries — a
 photo and two sentences is a normal entry; a long essay is the rare one.
 
@@ -10,8 +10,8 @@ owner can sign in to **write, edit, and delete entries directly in the browser**
 
 ## The one idea: Daylight
 
-Swedish daylight swings from about 6½ hours in December to over 18 at midsummer.
-Every entry is tinted by how much daylight Göteborg **actually had** on its date
+Stockholm daylight swings from just over 6 hours in December to more than 18½ at midsummer.
+Every entry is tinted by how much daylight Stockholm **actually had** on its date
 (computed from real sunrise/sunset). Winter entries render in deep petrol‑black;
 summer entries bleach toward birch‑white, and the page changes character as you
 scroll the semester. Each entry shows a small daylight gauge with its sunrise and
@@ -104,7 +104,7 @@ to bulk‑author offline. Frontmatter shape:
 ---
 date: 2026-03-22            # required, YYYY-MM-DD
 title: "Out to the islands" # optional
-location: "Göteborg"        # optional
+location: "Södermalm"       # optional
 tags: [travel, everyday]    # optional
 unlisted: false             # optional, default false
 photos:

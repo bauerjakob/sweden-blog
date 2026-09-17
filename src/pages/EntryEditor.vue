@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, type ApiPhoto } from '@/api/client'
-import { createEntry, updateEntry } from '@/content/mutations'
+import { createEntry, updateEntry, deleteAndRemove } from '@/content/mutations'
 import { applyDocumentMeta } from '@/composables/useDocumentMeta'
 import { setSceneVars } from '@/composables/useAmbientDaylight'
 import { getTheme } from '@/lib/daylight'
@@ -17,8 +17,8 @@ const form = reactive({
   date: new Date().toISOString().slice(0, 10),
   title: '',
   location: '',
-  tagsText: '',
   unlisted: false,
+  hasPage: true,
   bodyMd: '',
   photos: [] as ApiPhoto[],
 })
@@ -27,6 +27,11 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const uploading = ref(false)
+// Delete asks twice. Not a native confirm(): it would be the one piece of
+// chrome on the page the site doesn't own, and it puts the destructive button
+// under the Return key of whoever was still typing.
+const confirmingDelete = ref(false)
+const deleting = ref(false)
 
 // Live Daylight preview for the chosen date — ties the editor to the signature.
 const daylight = computed(() => {
@@ -54,8 +59,8 @@ onMounted(async () => {
       form.date = entry.dateISO
       form.title = entry.title ?? ''
       form.location = entry.location ?? ''
-      form.tagsText = entry.tags.join(', ')
       form.unlisted = entry.unlisted
+      form.hasPage = entry.hasPage
       form.bodyMd = '' // body_md isn't sent in the public shape; see note below
       form.photos = entry.photos.map((p) => ({ ...p }))
       // Fetch the raw Markdown for editing.
@@ -119,6 +124,20 @@ function move(i: number, dir: -1 | 1) {
 
 const missingAlt = computed(() => form.photos.some((p) => !p.alt || !p.alt.trim()))
 
+async function onDelete() {
+  if (!props.slug) return
+  error.value = null
+  deleting.value = true
+  try {
+    await deleteAndRemove(props.slug)
+    router.push('/')
+  } catch (e) {
+    error.value = (e as Error).message
+    deleting.value = false
+    confirmingDelete.value = false
+  }
+}
+
 async function onSubmit() {
   error.value = null
   if (missingAlt.value) {
@@ -130,8 +149,8 @@ async function onSubmit() {
     date: form.date,
     title: form.title.trim() || undefined,
     location: form.location.trim() || undefined,
-    tags: form.tagsText.split(',').map((t) => t.trim()).filter(Boolean),
     unlisted: form.unlisted,
+    hasPage: form.hasPage,
     bodyMd: form.bodyMd,
     photos: form.photos,
   }
@@ -173,12 +192,7 @@ async function onSubmit() {
 
         <label class="field">
           <span class="field__label">Location <span class="field__hint">(optional)</span></span>
-          <input v-model="form.location" type="text" class="field__input" placeholder="e.g. Göteborg" />
-        </label>
-
-        <label class="field">
-          <span class="field__label">Tags <span class="field__hint">(comma-separated)</span></span>
-          <input v-model="form.tagsText" type="text" class="field__input" placeholder="travel, uni, food, everyday" />
+          <input v-model="form.location" type="text" class="field__input" placeholder="e.g. Södermalm" />
         </label>
 
         <label class="field">
@@ -224,20 +238,70 @@ async function onSubmit() {
         </fieldset>
 
         <label class="checkbox">
+          <input v-model="form.hasPage" type="checkbox" />
+          <span>
+            <strong>Own page</strong> — this entry gets a page of its own to open.
+            Turn it off for a short note: it then lives only in the timeline,
+            which shows it in full instead of an excerpt.
+          </span>
+        </label>
+
+        <label class="checkbox">
           <input v-model="form.unlisted" type="checkbox" />
           <span>
-            <strong>Unlisted</strong> — reachable by direct link, hidden from the timeline and tags.
+            <strong>Unlisted</strong> — reachable by direct link, hidden from the timeline.
           </span>
         </label>
 
         <p v-if="error" class="editor__error" role="alert">{{ error }}</p>
 
         <div class="editor__actions">
-          <button type="submit" class="editor__save" :disabled="saving">
+          <button type="submit" class="editor__save" :disabled="saving || deleting">
             {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Publish entry' }}
           </button>
           <RouterLink to="/" class="editor__cancel">Cancel</RouterLink>
         </div>
+
+        <!-- Last thing on the page, and behind a second click. type="button"
+             throughout, so neither step can be reached by submitting the form. -->
+        <section v-if="isEdit" class="danger">
+          <button
+            v-if="!confirmingDelete"
+            type="button"
+            class="danger__start"
+            :disabled="saving || deleting"
+            @click="confirmingDelete = true"
+          >
+            Delete entry
+          </button>
+
+          <div v-else class="danger__confirm" role="group" aria-label="Confirm deletion">
+            <p class="danger__question" role="alert">
+              <strong>Delete this entry permanently?</strong>
+              This can't be undone. If you only want it off the timeline, cancel
+              and tick <em>Unlisted</em> instead — the entry stays, reachable by
+              its link.
+            </p>
+            <div class="danger__buttons">
+              <button
+                type="button"
+                class="danger__go"
+                :disabled="deleting"
+                @click="onDelete"
+              >
+                {{ deleting ? 'Deleting…' : 'Yes, delete' }}
+              </button>
+              <button
+                type="button"
+                class="danger__keep"
+                :disabled="deleting"
+                @click="confirmingDelete = false"
+              >
+                Keep it
+              </button>
+            </div>
+          </div>
+        </section>
       </form>
     </div>
   </div>
@@ -424,6 +488,91 @@ async function onSubmit() {
   font-size: 0.9rem;
 }
 .editor__cancel:hover { color: var(--day-ink); }
+/*
+  DELETE — kept at the bottom, behind its own hairline, and two clicks deep.
+  The first click only ever swaps in the question; nothing leaves until the
+  second one. The copy names the non-destructive way out, because "hide this"
+  is what most people actually want when they reach for delete.
+*/
+.danger {
+  --danger: #c25b3a;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--day-hairline);
+}
+.danger__start {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--ease-quick),
+    border-color 200ms var(--ease-quick);
+}
+.danger__start:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: var(--danger);
+}
+.danger__start:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.danger__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.25rem;
+}
+.danger__question {
+  flex: 1 1 20rem;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--day-ink-muted);
+}
+.danger__question strong {
+  color: var(--day-ink);
+}
+.danger__buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.danger__go {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 999px;
+  /* Darker than the outline's --danger so white text clears AA on it. */
+  background: #a8452a;
+  color: #fff;
+  cursor: pointer;
+}
+.danger__go:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.danger__go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.danger__keep {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--day-ink-muted);
+  cursor: pointer;
+}
+.danger__keep:hover:not(:disabled) {
+  color: var(--day-ink);
+}
 .sr-only {
   position: absolute;
   width: 1px;

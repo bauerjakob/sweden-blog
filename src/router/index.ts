@@ -37,12 +37,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/About.vue'),
   },
   {
-    path: '/tags/:tag',
-    name: 'tag',
-    component: () => import('@/pages/Tag.vue'),
-    props: true,
-  },
-  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/pages/NotFound.vue'),
