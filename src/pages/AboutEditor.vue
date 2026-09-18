@@ -4,13 +4,10 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { saveAbout } from '@/content/about'
 import { applyDocumentMeta } from '@/composables/useDocumentMeta'
-import { setSceneVars } from '@/composables/useAmbientDaylight'
+import { keepScene } from '@/composables/useAmbientDaylight'
 
-// The same dusk the About page sits in, so editing it looks like the page.
-const scene = {
-  '--day-page': '#12252e',
-  '--day-page-2': '#0b171e',
-}
+// Like the About page: inherit the scene you came in with, light on a cold load.
+const fallbackScene = { '--day-scheme': 'light' }
 
 const router = useRouter()
 
@@ -24,7 +21,7 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 
 onMounted(async () => {
-  setSceneVars(scene)
+  keepScene(fallbackScene)
   applyDocumentMeta({ title: 'Edit About — Ett halvår i Sverige', description: 'Editor' })
   try {
     // The page's own JSON carries rendered HTML; the editor wants the source.
@@ -105,9 +102,9 @@ async function onSubmit() {
 
 <style scoped>
 .editor {
-  --day-ink: #f2ede1;
-  --day-ink-muted: #adc0c4;
-  --day-hairline: rgba(242, 237, 225, 0.16);
+  --day-ink: var(--scene-ink);
+  --day-ink-muted: var(--scene-ink-muted);
+  --day-hairline: color-mix(in srgb, var(--scene-ink) 16%, transparent);
 }
 .editor__inner {
   max-width: 44rem;

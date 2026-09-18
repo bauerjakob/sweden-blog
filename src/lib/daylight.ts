@@ -5,9 +5,10 @@ import SunCalc from 'suncalc'
  *
  * Given an entry's date, compute how much daylight Stockholm actually had that
  * day, then turn it into a palette. Short winter days render the page in deep
- * petrol; long summer days lift it toward a warm off-white. The swing is
- * deliberately damped (see AMPLITUDE) — enough that the season is unmistakable
- * when you scroll a few months, not so much that the page becomes the subject.
+ * petrol; any day past DARK_THRESHOLD_HOURS renders it near-white. The winter
+ * range is damped (see AMPLITUDE) so December reads darker than February
+ * without the page becoming the subject; the light range is deliberately flat,
+ * so the season shows up as the dark/light flip rather than as a gradient.
  * The reading panel and ink are chosen per mode to always clear WCAG AA
  * (>= 4.5:1), so the mood lives on the page, never on the text.
  *
@@ -39,7 +40,7 @@ const AMPLITUDE = 0.55
 
 // The tone each mode collapses toward as AMPLITUDE goes to 0.
 const DARK_ANCHOR = '#162932'
-const LIGHT_ANCHOR = '#dfe0d6'
+const LIGHT_ANCHOR = '#fcfcf9'
 
 /** Pull an expressive endpoint back toward its mode's anchor. */
 function damp(hex: string, anchor: string): string {
@@ -175,12 +176,15 @@ export function getTheme(date: Date): DaylightTheme {
   } else {
     // How deep into summer, 0 (near the threshold) .. 1 (solstice).
     const bright = clamp((info.hours - DARK_THRESHOLD_HOURS) / (MAX_HOURS - DARK_THRESHOLD_HOURS), 0, 1)
-    // cold grey-blue -> warm birch, both ends pulled toward LIGHT_ANCHOR.
-    const page = mixHex(damp('#ccd6d6', LIGHT_ANCHOR), damp('#f6f2e6', LIGHT_ANCHOR), bright)
+    // Near-white across the whole light half of the year: a barely-there cool
+    // cast near the threshold -> a barely-there warm one at midsummer, both
+    // ends pulled toward LIGHT_ANCHOR. The seasonal swing is legible in the
+    // dark half and essentially decorative here — light entries read as white.
+    const page = mixHex(damp('#f8fbf9', LIGHT_ANCHOR), damp('#fffffc', LIGHT_ANCHOR), bright)
     vars = {
       '--day-page': page,
-      '--day-page-2': mixHex(page, '#b9c6c5', 0.5 * AMPLITUDE),
-      '--day-panel': '#fbf8f0',
+      '--day-page-2': mixHex(page, '#f0f4f2', 0.5 * AMPLITUDE),
+      '--day-panel': '#ffffff',
       '--day-ink': '#17282a',
       '--day-ink-muted': '#566863',
       '--day-hairline': 'color-mix(in srgb, #17282a 14%, transparent)',

@@ -2,16 +2,14 @@
 import { computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { applyDocumentMeta } from '@/composables/useDocumentMeta'
-import { setSceneVars } from '@/composables/useAmbientDaylight'
+import { keepScene } from '@/composables/useAmbientDaylight'
 import { publicEntries } from '@/content/store'
 import { loadAbout, useAbout } from '@/content/about'
 import { isLoggedIn } from '@/stores/auth'
 
-// A fixed mood for the About page: the long blue dusk of a Swedish afternoon.
-const scene = {
-  '--day-page': '#12252e',
-  '--day-page-2': '#0b171e',
-}
+// No mood of its own: About keeps whatever scene the timeline left behind, so
+// tapping the tab doesn't repaint the site. Opened cold, it comes up light.
+const fallbackScene = { '--day-scheme': 'light' }
 
 const router = useRouter()
 const { about, loading, error } = useAbout()
@@ -32,7 +30,7 @@ const bodyHtml = computed(() =>
 )
 
 onMounted(async () => {
-  setSceneVars(scene)
+  keepScene(fallbackScene)
   await loadAbout()
   applyDocumentMeta({
     title: `${titleLines.value.join(' ') || 'About'} — Ett halvår i Sverige`,
@@ -99,9 +97,11 @@ function onProseClick(e: MouseEvent) {
 
 <style scoped>
 .about {
-  --day-ink: #f2ede1;
-  --day-ink-muted: #adc0c4;
-  --day-hairline: rgba(242, 237, 225, 0.16);
+  /* Text on the page itself, not on a panel — so it follows the inherited
+     scene rather than assuming a dark one. */
+  --day-ink: var(--scene-ink);
+  --day-ink-muted: var(--scene-ink-muted);
+  --day-hairline: color-mix(in srgb, var(--scene-ink) 16%, transparent);
   --day-accent: var(--color-ochre);
   max-width: 48rem;
   margin: 0 auto;

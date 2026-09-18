@@ -159,7 +159,7 @@ export function setSceneVars(theme: DaylightTheme | Record<string, string>) {
 
   const vars = isTheme(theme) ? theme.vars : theme
   const light = (isTheme(theme) ? theme.mode : vars['--day-scheme']) === 'light'
-  const page = vars['--day-page'] ?? (light ? '#e4e2d6' : '#112129')
+  const page = vars['--day-page'] ?? (light ? '#fcfcf9' : '#112129')
   applyScene({
     page,
     page2: vars['--day-page-2'] ?? page,
@@ -168,4 +168,20 @@ export function setSceneVars(theme: DaylightTheme | Record<string, string>) {
     inkMuted: vars['--day-ink-muted'] ?? (light ? '#566863' : '#adc0c4'),
     lum: light ? 1 : 0,
   })
+}
+
+/**
+ * Keep whatever scene is already on screen.
+ *
+ * Pages that are not an entry (About) have no daylight of their own. Rather
+ * than snapping the whole site to a mood of their own the moment you tap the
+ * tab, they inherit the scene the timeline left behind, so moving between the
+ * timeline and About is a change of page, not a change of weather. On a cold
+ * load there is nothing to inherit — `fallback` is used then, and it is light.
+ */
+export function keepScene(fallback: DaylightTheme | Record<string, string>) {
+  // applyScene writes the scene inline on <html>; an empty value means we
+  // arrived here directly and the page is still on the stylesheet defaults.
+  if (document.documentElement.style.getPropertyValue('--scene-page')) return
+  setSceneVars(fallback)
 }
