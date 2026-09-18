@@ -26,9 +26,25 @@ import {
 // at slightly above the middle of the screen, not dead centre.
 const FOCUS = 0.42
 
+/**
+ * The last scene written to <html>, as its own serialised vars.
+ *
+ * Every write here invalidates the style of the whole document and forces the
+ * glass chrome to re-composite its backdrop blur — the single most expensive
+ * thing this file can do, and it was happening on every scroll frame even when
+ * the blend had not moved far enough to change a single hex digit. Comparing
+ * first turns most frames into no work at all.
+ */
+let written = ''
+
 function applyScene(s: Scene) {
+  const vars = sceneVars(s)
+  const key = Object.values(vars).join('|')
+  if (key === written) return
+  written = key
+
   const root = document.documentElement
-  for (const [k, v] of Object.entries(sceneVars(s))) root.style.setProperty(k, v)
+  for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v)
   // Let native UI (scrollbars, form controls) follow the season too.
   root.style.colorScheme = s.lum > 0.5 ? 'light' : 'dark'
 }
@@ -37,23 +53,42 @@ export function useAmbientDaylight(container: Ref<HTMLElement | null>) {
   let raf = 0
   let ticking = false
 
-  function apply() {
-    ticking = false
+  /**
+   * Entry centres in *document* space, measured once and reused.
+   *
+   * The scroll handler used to call getBoundingClientRect() on every entry in
+   * the timeline, every frame. That is a forced layout per frame whose cost
+   * grows with the length of the semester, on the main thread, competing with
+   * exactly the reveal transitions it runs alongside — which is what made a
+   * card look like it snapped into place instead of fading. An entry's position
+   * in the document does not change as you scroll, so it is measured when the
+   * page changes shape and read for free in between.
+   */
+  let marks: { center: number; scene: Scene }[] | null = null
+
+  function measure() {
     const host = container.value
     if (!host) return
-
-    const focus = window.innerHeight * FOCUS
-    const marks: { center: number; scene: Scene }[] = []
-
+    const top = window.scrollY
+    const next: { center: number; scene: Scene }[] = []
     host.querySelectorAll<HTMLElement>('[data-scene]').forEach((el) => {
       const scene = readScene(el)
       if (!scene) return
       const r = el.getBoundingClientRect()
-      marks.push({ center: r.top + r.height / 2, scene })
+      next.push({ center: r.top + top + r.height / 2, scene })
     })
+    next.sort((a, b) => a.center - b.center)
+    marks = next
+  }
 
-    if (!marks.length) return
-    marks.sort((a, b) => a.center - b.center)
+  function apply() {
+    ticking = false
+    if (!container.value) return
+    if (!marks) measure()
+    if (!marks?.length) return
+
+    // Document-space too, so it compares directly against the cached centres.
+    const focus = window.scrollY + window.innerHeight * FOCUS
 
     // Before the first / after the last entry there is nothing to blend with.
     if (focus <= marks[0].center) return applyScene(marks[0].scene)
@@ -76,15 +111,34 @@ export function useAmbientDaylight(container: Ref<HTMLElement | null>) {
     raf = requestAnimationFrame(apply)
   }
 
+  /** Something moved the entries; re-measure before the next read. */
+  function invalidate() {
+    marks = null
+    onScroll()
+  }
+
+  let mutations: MutationObserver | null = null
+
   onMounted(() => {
     apply()
     window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
+    window.addEventListener('resize', invalidate, { passive: true })
+    // A lazy photo finishing its download reflows everything below it, and on a
+    // phone that is most of the timeline. Capture, because `load` on an <img>
+    // does not bubble.
+    container.value?.addEventListener('load', invalidate, { capture: true })
+    // Entries arriving after mount change the set of marks outright.
+    if (container.value) {
+      mutations = new MutationObserver(invalidate)
+      mutations.observe(container.value, { childList: true, subtree: true })
+    }
   })
 
   onUnmounted(() => {
     window.removeEventListener('scroll', onScroll)
-    window.removeEventListener('resize', onScroll)
+    window.removeEventListener('resize', invalidate)
+    container.value?.removeEventListener('load', invalidate, { capture: true })
+    mutations?.disconnect()
     cancelAnimationFrame(raf)
     // Leave the last scene in place; pages that need a fixed mood set it themselves.
   })
@@ -109,7 +163,7 @@ export function setSceneVars(theme: DaylightTheme | Record<string, string>) {
   applyScene({
     page,
     page2: vars['--day-page-2'] ?? page,
-    panel: vars['--day-panel'] ?? (light ? '#fbf8f0' : '#1a2e36'),
+    panel: vars['--day-panel'] ?? (light ? '#ffffff' : '#1a2e36'),
     ink: vars['--day-ink'] ?? (light ? '#17282a' : '#f2ede1'),
     inkMuted: vars['--day-ink-muted'] ?? (light ? '#566863' : '#adc0c4'),
     lum: light ? 1 : 0,

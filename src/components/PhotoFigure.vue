@@ -19,6 +19,21 @@ const props = withDefaults(
 // moves it nor shifts its centre. No-ops on touch and under reduced motion.
 const frame = ref<HTMLElement | null>(null)
 useMagnetic(frame)
+
+// A photo that appears the instant its last byte lands is the hardest pop on
+// the page — the card has already faded in around an empty frame, and then the
+// picture snaps into it. Holding the image at zero until it can actually be
+// painted, and easing it up from there, turns that into one arrival.
+//
+// `complete` covers the cached case: an image served from memory can finish
+// before Vue attaches the listener, and without this check it would stay
+// invisible forever. An error resolves it too, so a broken photo shows its alt
+// text rather than nothing at all.
+const loaded = ref(false)
+const settle = () => (loaded.value = true)
+function bind(el: unknown) {
+  if ((el as HTMLImageElement | null)?.complete) loaded.value = true
+}
 </script>
 
 <template>
@@ -28,7 +43,11 @@ useMagnetic(frame)
          gap at its top or bottom edge. -->
     <div ref="frame" class="figure__frame">
       <img
+        :ref="bind"
         class="figure__img"
+        :class="{ 'is-loaded': loaded }"
+        @load="settle"
+        @error="settle"
         :src="photo.url"
         :srcset="photo.srcset"
         :sizes="props.sizes"
@@ -88,7 +107,22 @@ useMagnetic(frame)
      transitioned, because the composable already eases it frame by frame. */
   transform: translate3d(0, var(--parallax-y, 0), 0);
   scale: var(--parallax-scale, 1);
-  transition: scale 900ms var(--ease-out);
+  /* opacity is the load fade (see `loaded` in the script); it is deliberately
+     quicker than the zoom, so the picture is legible well before it has
+     finished settling into its crop. */
+  opacity: 0;
+  transition:
+    scale 900ms var(--ease-out),
+    opacity 420ms var(--ease-quick);
+}
+.figure__img.is-loaded {
+  opacity: 1;
+}
+/* No fade where motion is unwelcome — the image is simply there once it is. */
+@media (prefers-reduced-motion: reduce) {
+  .figure__img {
+    opacity: 1;
+  }
 }
 .figure__caption {
   margin-top: 0.65rem;

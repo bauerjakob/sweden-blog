@@ -12,12 +12,9 @@ const route = useRoute()
 const menuOpen = ref(false)
 const bar = ref<HTMLElement | null>(null)
 
-// The bar never slides away while the menu is hanging off it. It hands itself
-// in so the title handoff can measure against the bar's real height.
-const { condensed, hidden, brandIn, refresh: refreshBrand } = useHeaderScroll(
-  () => menuOpen.value,
-  bar,
-)
+// The bar stays put at every scroll position; it hands itself in so the title
+// handoff can measure against the bar's real height.
+const { condensed, brandIn, refresh: refreshBrand } = useHeaderScroll(bar)
 
 // Below this the title is invisible anyway, so it may as well be gone: out of
 // the tab order, out of the accessibility tree.
@@ -57,7 +54,6 @@ async function onLogout() {
     class="masthead"
     :class="{
       'is-condensed': condensed,
-      'is-hidden': hidden,
       'is-open': menuOpen,
       'is-brand-live': brandLive,
     }"
@@ -133,7 +129,6 @@ async function onLogout() {
   position: sticky;
   top: 0;
   z-index: 40;
-  transition: transform 380ms var(--ease-out);
 }
 
 .masthead__pane {
@@ -207,7 +202,7 @@ async function onLogout() {
   position: relative;
   max-width: 72rem;
   margin: 0 auto;
-  padding: 0.55rem clamp(1rem, 4vw, 2rem);
+  padding: 0.95rem clamp(1rem, 4vw, 2rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -438,11 +433,6 @@ async function onLogout() {
   .burger {
     display: block;
   }
-  /* On a phone the bar is a real slice of the screen, so it gets out of the
-     way when you scroll down and comes back the moment you scroll up. */
-  .masthead.is-hidden {
-    transform: translateY(-115%);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -455,9 +445,6 @@ async function onLogout() {
   .nav[data-glide-ready] .nav__pill,
   .sheet__link {
     transition: none;
-  }
-  .masthead.is-hidden {
-    transform: none;
   }
   /* The pill still marks the page and still follows the pointer — it just
      arrives there instead of travelling. Nothing else shifts position: the

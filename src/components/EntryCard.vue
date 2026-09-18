@@ -253,11 +253,13 @@ const scene = computed(() => sceneAttrs(props.entry.daylight))
 }
 
 /* Below the two-column breakpoint there are no left/right sides to enter from,
-   so the alternating cards all just rise. */
+   so the alternating cards all just rise. The distance is the phone one from
+   main.css: a card is full-bleed here, and a long slide on something that large
+   reads as lag rather than as motion. */
 @media (max-width: 51.24rem) {
   .entry.reveal {
     --reveal-x: 0;
-    --reveal-y: 26px;
+    --reveal-y: 16px;
   }
 }
 

@@ -98,6 +98,20 @@
   --glass-blur: blur(22px) saturate(180%);
 }
 
+/*
+  A cheaper pane on phones. The header, the month tabs and the footer are all
+  full-width bars here, and every one of them re-runs its backdrop blur whenever
+  the scene colour underneath it moves — during a scroll, on the main thread's
+  frame budget, alongside the entry animations. A 22px radius across the full
+  width of the screen is the most expensive thing on the page and, at this size,
+  is not a radius you can actually tell from 14px.
+*/
+@media (max-width: 51.24rem) {
+  :root {
+    --glass-blur: blur(14px) saturate(160%);
+  }
+}
+
 .glass {
   background: var(--glass-tint);
   backdrop-filter: var(--glass-blur);
@@ -323,19 +337,21 @@ body {
   transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 22px), 0)
     scale(var(--reveal-s, 0.985));
   transition:
-    opacity 700ms var(--ease-out),
-    transform 900ms var(--ease-out);
-  transition-delay: calc(var(--reveal-i, 0) * 70ms);
-  will-change: opacity, transform;
+    opacity var(--reveal-fade, 700ms) var(--ease-out),
+    transform var(--reveal-move, 900ms) var(--ease-out);
+  transition-delay: calc(var(--reveal-i, 0) * var(--reveal-step, 70ms));
 }
 .reveal.is-in {
   opacity: 1;
   transform: none;
 }
-/* Once it has arrived, stop claiming a compositor layer. */
-.reveal.is-in {
-  will-change: auto;
-}
+/*
+  No `will-change` here on purpose. It used to sit on every .reveal on the page,
+  which on a long timeline is a hundred-odd compositor layers held open for the
+  whole session — on a phone that is the memory pressure that made these very
+  transitions stutter. Browsers promote a transitioning transform/opacity on
+  their own for exactly as long as it runs, which is all this ever needed.
+*/
 .reveal--left {
   --reveal-x: -26px;
   --reveal-y: 12px;
@@ -347,6 +363,31 @@ body {
 .reveal--rise {
   --reveal-y: 40px;
   --reveal-s: 1;
+}
+
+/*
+  Phones get a shorter, quicker version of the same move.
+
+  A card here is full-bleed and nearly as tall as the screen, and a flick scrolls
+  a viewport at a time — so a 900ms slide over 26px is still running long after
+  you have arrived, and it is the tail of it you notice. Less distance and less
+  time means the arrival is finished by the time it matters. The scale goes too:
+  resampling a layer the size of a phone screen, with a photo in it, is the one
+  part of this that a modest GPU actually feels.
+*/
+@media (max-width: 51.24rem) {
+  .reveal {
+    --reveal-y: 16px;
+    --reveal-s: 1;
+    --reveal-fade: 450ms;
+    --reveal-move: 550ms;
+    /* A two-up photo grid is wholly on screen at once here, so the sequence
+       only has to be perceptible, not paced. */
+    --reveal-step: 45ms;
+  }
+  .reveal--rise {
+    --reveal-y: 22px;
+  }
 }
 
 /*
